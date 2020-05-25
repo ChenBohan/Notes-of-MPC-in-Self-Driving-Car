@@ -1,6 +1,7 @@
 clc;
 clear all;
 %% 参考轨迹生成
+
 N=100;
 T=0.05;
 % Xout=zeros(2*N,3);
@@ -13,8 +14,8 @@ for k=1:1:N
     Xout(k,3)=0;
     Tout(k,1)=(k-1)*T;
 end
-
 %% Tracking a constant reference trajectory
+
 Nx=3; %状态量个数
 Nu =2; %控制量个数
 Tsim =20; %仿真时间
@@ -30,14 +31,14 @@ vd1 = Rr*w; % 参考系统的纵向速度
 vd2 = 0; %参考系统前轮偏角
 
 %矩阵定义
-x_real=zeros(Nr,Nc);
-x_piao=zeros(Nr,Nc);
+x_real=zeros(Nr,Nc); %状态量   
+x_piao=zeros(Nr,Nc); %状态量误差
 u_real=zeros(Nr,2);
 u_piao=zeros(Nr,2);
-x_real(1,:)=X0;
-x_piao(1,:)=x_real(1,:)-Xout(1,:);
-X_PIAO=zeros(Nr,、*Tsim);
-XXX=zeros(Nr,Nx*Tsim);	%用于保持每个时刻预测的所有状态值
+x_real(1,:)=X0; %把初始状态赋值给状态量第一行
+x_piao(1,:)=x_real(1,:)-Xout(1,:); %计算第一个状态量误差
+X_PIAO=zeros(Nr,Nx*Tsim);
+XXX=zeros(Nr,Nx*Tsim); %用于保持每个时刻预测的所有状态值
 q=[1 0 0;0 1 0;0 0 0.5];
 Q_cell=cell(Tsim,Tsim);
 for i=1:1:Tsim
@@ -50,21 +51,21 @@ for i=1:1:Tsim
     end
 end
 Q=cell2mat(Q_cell);
-R=0.1*eye(Nu*Tsim,Nu*Tsim); %Nu是控制量个数
+R=0.1*eye(Nu*Tsim,Nu*Tsim); %Nu是控制量个数，eye是单位矩阵
 
 %MPC主体
 for i=1:1:Nr
     t_d =Xout(i,3);
     a=[1    0   -vd1*sin(t_d)*T;
        0    1   vd1*cos(t_d)*T;
-       0    0   1;];
+       0    0   1;]; %状态转移矩阵a
     b=[cos(t_d)*T   0;
        sin(t_d)*T   0;
-       0            T;];     
+       0            T;]; %控制量矩阵b   
     A_cell=cell(Tsim,1);
     B_cell=cell(Tsim,Tsim);
      for j=1:1:Tsim
-        A_cell{j,1}=a^j;
+        A_cell{j,1}=a^j; %^是矩阵乘法
         for k=1:1:Tsim
            if k<=j
                 B_cell{j,k}=(a^(j-k))*b;
@@ -105,13 +106,15 @@ for i=1:1:Nr
     X00=x_real(i,:);
     vd11=vd1+u_piao(i,1);
     vd22=vd2+u_piao(i,2);
+    %基于控制量计算下一时刻的状态量
     XOUT=dsolve('Dx-vd11*cos(z)=0','Dy-vd11*sin(z)=0','Dz-vd22=0','x(0)=X00(1)','y(0)=X00(2)','z(0)=X00(3)');
      t=T; 
+     %记录下一时刻的状态量
      x_real(i+1,1)=eval(XOUT.x);
      x_real(i+1,2)=eval(XOUT.y);
      x_real(i+1,3)=eval(XOUT.z);
      if(i<Nr)
-         x_piao(i+1,:)=x_real(i+1,:)-Xout(i+1,:);
+         x_piao(i+1,:)=x_real(i+1,:)-Xout(i+1,:); %计算下一时刻的误差
      end
     u_real(i,1)=vd1+u_piao(i,1);
     u_real(i,2)=vd2+u_piao(i,2);
@@ -135,8 +138,8 @@ for i=1:1:Nr
     hold on;
     
 end
-
 %% 以下为绘图部分
+
 figure(2)
 subplot(3,1,1);
 plot(Tout(1:Nr),Xout(1:Nr,1),'k--');
@@ -194,5 +197,3 @@ plot(Tout(1:Nr),x_piao(1:Nr,3),'k');
 %grid on;
 xlabel('采样时间T');
 ylabel('e(\theta)');
-
-
